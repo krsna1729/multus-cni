@@ -63,13 +63,13 @@ Please read [CNI](https://github.com/containernetworking/cni) for more informati
    <img src="doc/images/multus_cni_pod.png" width="1008" />
 </p>
 
-## Getting Started
+# Getting Started
 
-### Requirements to build
+## Requirements to build
 
  * [go 1.8](https://golang.org)
 
-### Setup the environment
+## Setup the environment
 
  1. Define GOPATH
 
@@ -89,13 +89,87 @@ Please read [CNI](https://github.com/containernetworking/cni) for more informati
    $ go get -d github.com/intel-corp/multus-cni
    ```
 
-### Build and install plugin
+## Build and install plugin
 
    ```bash
     $ cd $GOPATH/src/github.com/intel-corp/multus-cni
     $ ./build
     $ sudo cp ./bin/multus /opt/cni/bin/
    ```
+# Multus Usage Models
+
+Multus can be configured using a CNI configuration file as well as by making use of custom 
+resource definitions in Kubernetes (CRD).  These are not mutually exclusive - the user can setup a default
+configuration via CNI configuration file while also creating network objects which pods can make use of.
+We'll introduce a simple CNI configuration file and custom resource usage in the next couple of sections.
+
+## Using Multus with a CNI configuration file
+
+When making use of just a CNI configuration file, each pod created in the cluster will  include
+a network interface per network delegate described. A minimal example is provided as follows:
+
+```
+{
+    "type": "multus",
+    "log_level": "debug",
+    "kubeconfig": "/etc/kubernetes/admin.conf",
+    "delegates": [{
+        "name": "flannel",
+        "type": "flannel",
+        "masterplugin": true
+    } ]
+}
+```
+
+In this simnple case, we're just using the Multus CNI to add a single interface using the CNI flannel plugin.  Not very interesting.  Additional interfaces using potentially differnet plugins are created by adding more delegates to the Multus CNI configuration. 
+
+A ```masterplugin``` needs to be defined.  In the first example, you see the ```"masterplugin": true``` provided.  In the case that multiple delegates are created, one of these must be marked as the ```masterplugin.``` It is this plugin which will serve as the primary interface, providing the pod's IP address and DNS information back to Kubernetes.  No other interfaces will be visible to Kubernetes.  An simple multi-homed network configuration is provided below:
+
+```
+exmple conf w ptp and flannel and bridge
+```
+
+Once you have a kubernertes cluster up making use of this configuration, if you deploy a pod you should see the relevant 
+network interfaces created.
+
+### Try it out
+
+```
+curl the file to /etc/cni/net.d/
+kubeadm init ..
+taint the system
+create a pod
+exec ip a inside the pod
+```
+
+Having a CNI configuration file for Multus helps provide a default option for a cluster's networking.
+In the next section, we'll introduce CRD, an alternative option for creating and assigning networks to pods.
+
+## Using Multus with Kubernete's CRD
+
+(CRDs)[https://kubernetes.io/docs/concepts/api-extension/custom-resources/] are an extension of the Kubernetes 
+API, providing enhanced features which are custom to the particular Kubernetes installation.                                                   
+                                                                                          
+For Multus, a neworking CRD can be created which contains configuration details and plugin details
+for a given network.  Making use of this, multiple networks could be created with varying CNI
+plugins.  Pods can then be created to make use of one or multiple of these network CRDs.  
+                                                                                          
+When Multus is invoked by Kubelet, it recovers custom pod annotations and uses these to obtain
+the relevant CRD.  This CRD tells Multus which CNI plugin to invoke and what networking configuration
+should be used.                                                                           
+                                                                                          
+In the event that a multi-homed pod is created, the order of CNI plugin invocation is determined
+by the order the network annotation is provided in the pod description. Notably, the first
+network in the pod configuration will act as the ```masterplugin``` for the pod.  It is this interface
+which will serve as the primary interface, providing the pod's IP address and DNS information back to 
+Kubernetes.  No other interfaces will be visible to Kubernetes. 
+                                                             
+### Try it out
+
+
+```
+curl <> file
+```
 
 ## Work flow
 <p align="center">
