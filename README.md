@@ -172,7 +172,7 @@ network interfaces created.
 
 Bring up the Kubernetes cluster, using our sample three delegate Multus configuration:
 ```
-curl the file to /etc/cni/net.d/
+sudo curl  https://raw.githubusercontent.com/egernst/multus-cni/readme-updates/doc/sample/01-multus-cni_fl_ptp_br.conf -o /etc/cni/net.d/01-multus-cni.conf
 $ sudo -E kubeadm init --pod-network-cidr 10.244.0.0/16
 $ export KUBECONFIG=/etc/kubernetes/admin.conf
 ```
@@ -183,16 +183,11 @@ $ sudo -E kubectl taint nodes "$master" node-role.kubernetes.io/master:NoSchedul
 ```
 Start a simple pod and observe the network interfaces provided:
 ```
+curl https://raw.githubusercontent.com/egernst/multus-cni/readme-updates/doc/sample/ubuntu-pod.yaml -o ubuntu-pod.yaml
 sudo -E kubectl create -f ubuntu-pod.yaml
 sudo -E kubectl exec -it ubuntu-pod -- bash -c "ip a"
 ```
 
-
-kubeadm init ..
-taint the system
-create a pod
-exec ip a inside the pod
-```
 
 Having a CNI configuration file for Multus helps provide a default option for a cluster's networking.
 In the next section, we'll introduce CRD, an alternative option for creating and assigning networks to pods.
