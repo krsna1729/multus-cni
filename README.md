@@ -126,16 +126,68 @@ In this simnple case, we're just using the Multus CNI to add a single interface 
 A ```masterplugin``` needs to be defined.  In the first example, you see the ```"masterplugin": true``` provided.  In the case that multiple delegates are created, one of these must be marked as the ```masterplugin.``` It is this plugin which will serve as the primary interface, providing the pod's IP address and DNS information back to Kubernetes.  No other interfaces will be visible to Kubernetes.  An simple multi-homed network configuration is provided below:
 
 ```
-exmple conf w ptp and flannel and bridge
-```
+{
+        "type": "multus",
+        "log_level": "debug",
+        "kubeconfig": "/etc/kubernetes/admin.conf",
+        "delegates":
+        [
+        {
+                "name": "flannel",
+                "type": "flannel",
+                "masterplugin": true
+        },
+        {
+                "type": "ptp",
+                "ipam": {
+                        "type": "host-local",
+                        "subnet": "10.0.0.0/24",
+                        "routes": [
+                                { "dst": "0.0.0.0/0" }
+                        ],
+                        "gateway": "10.0.0.1"
+                }
+        },
+        {
+                "type": "bridge",
+                "ipam": {
+                        "type": "host-local",
+                        "subnet": "11.0.0.0/24",
+                        "rangeStart": "11.0.0.10",
+                        "rangeEnd": "11.0.0.20",
+                        "routes": [
+                                { "dst": "0.0.0.0/0" }
+                        ],
+                        "gateway": "11.0.0.1"
+                }
+        }
+        ]
+}
+ ```
 
 Once you have a kubernertes cluster up making use of this configuration, if you deploy a pod you should see the relevant 
 network interfaces created.
 
 ### Try it out
 
+Bring up the Kubernetes cluster, using our sample three delegate Multus configuration:
 ```
 curl the file to /etc/cni/net.d/
+$ sudo -E kubeadm init --pod-network-cidr 10.244.0.0/16
+$ export KUBECONFIG=/etc/kubernetes/admin.conf
+```
+Taint the master so we can schedule a pod on it:
+```
+$ master=$(hostname)
+$ sudo -E kubectl taint nodes "$master" node-role.kubernetes.io/master:NoSchedule-
+```
+Start a simple pod and observe the network interfaces provided:
+```
+sudo -E kubectl create -f ubuntu-pod.yaml
+sudo -E kubectl exec -it ubuntu-pod -- bash -c "ip a"
+```
+
+
 kubeadm init ..
 taint the system
 create a pod
@@ -147,7 +199,7 @@ In the next section, we'll introduce CRD, an alternative option for creating and
 
 ## Using Multus with Kubernete's CRD
 
-(CRDs)[https://kubernetes.io/docs/concepts/api-extension/custom-resources/] are an extension of the Kubernetes 
+[CRDs](https://kubernetes.io/docs/concepts/api-extension/custom-resources) are an extension of the Kubernetes 
 API, providing enhanced features which are custom to the particular Kubernetes installation.                                                   
                                                                                           
 For Multus, a neworking CRD can be created which contains configuration details and plugin details
